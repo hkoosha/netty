@@ -17,7 +17,11 @@ package io.netty.util.internal;
 
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static io.netty.util.internal.EmptyArrays.EMPTY_BYTES;
+import static io.netty.util.internal.MacAddressUtil.bestAvailableMac;
 import static io.netty.util.internal.MacAddressUtil.parseMAC;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -92,6 +96,37 @@ public class MacAddressUtilTest {
                 parseMAC("00-AA-11-FF-FE-BB-22-CC"));
         assertArrayEquals(new byte[]{0, (byte) 0xaa, 0x11, (byte) 0xff, (byte) 0xfe, (byte) 0xbb, 0x22, (byte) 0xcc},
                 parseMAC("00:AA:11:FF:FE:BB:22:CC"));
+    }
+
+    @Test
+    public void testOverrideMacInSystemProperty() {
+        final String PROP = "io.netty.availableMac";
+        final String BEFORE = SystemPropertyUtil.get(PROP);
+
+        Map<String, byte[]> cases = new HashMap<>();
+        cases.put("00-AA-11-BB-22-CC",
+                new byte[]{0, (byte) 0xaa, 0x11, (byte) 0xbb, 0x22, (byte) 0xcc});
+        cases.put("00:AA:11:BB:22:CC",
+                new byte[]{0, (byte) 0xaa, 0x11, (byte) 0xbb, 0x22, (byte) 0xcc});
+        cases.put("00-AA-11-FF-FF-BB-22-CC",
+                new byte[]{0, (byte) 0xaa, 0x11, (byte) 0xff, (byte) 0xff, (byte) 0xbb, 0x22, (byte) 0xcc});
+        cases.put("00:AA:11:FF:FF:BB:22:CC",
+                new byte[]{0, (byte) 0xaa, 0x11, (byte) 0xff, (byte) 0xff, (byte) 0xbb, 0x22, (byte) 0xcc});
+
+        try {
+            for (Map.Entry<String, byte[]> entry : cases.entrySet()) {
+                String mac = entry.getKey();
+                byte[] bytes = entry.getValue();
+                System.setProperty(PROP, mac);
+                assertArrayEquals(bytes, bestAvailableMac());
+            }
+        } finally {
+            if (BEFORE == null) {
+                System.clearProperty(PROP);
+            } else {
+                System.setProperty(PROP, BEFORE);
+            }
+        }
     }
 
     @Test(expected = IllegalArgumentException.class)

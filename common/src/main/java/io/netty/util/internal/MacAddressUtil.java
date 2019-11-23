@@ -16,6 +16,7 @@
 
 package io.netty.util.internal;
 
+import io.netty.util.CharsetUtil;
 import io.netty.util.NetUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -46,6 +47,18 @@ public final class MacAddressUtil {
      * @return byte array containing a MAC. null if no MAC can be found.
      */
     public static byte[] bestAvailableMac() {
+        String macAddressOverride;
+        try {
+            macAddressOverride = SystemPropertyUtil.get("io.netty.availableMac");
+        } catch (Throwable cause) {
+            logger.error("Could not access System property: io.netty.availableMac", cause);
+            macAddressOverride = null;
+        }
+
+        if (macAddressOverride != null && !macAddressOverride.isEmpty()) {
+            return parseMAC(macAddressOverride);
+        }
+
         // Find the best MAC address available.
         byte[] bestMacAddr = EMPTY_BYTES;
         InetAddress bestInetAddr = NetUtil.LOCALHOST4;
